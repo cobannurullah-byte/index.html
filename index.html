@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Emlak İlan Kayıt</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+    }
+    label {
+      font-weight: bold;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      padding: 8px;
+    }
+    button {
+      cursor: pointer;
+    }
+    li {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      list-style: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Emlak İlan Kayıt Formu</h1>
+
+  <label>İlan Başlığı</label>
+  <input id="baslik" placeholder="Örn: 3+1 Daire">
+
+  <label>Fiyat</label>
+  <input id="fiyat" type="number" placeholder="Örn: 12000">
+
+  <label>Konum</label>
+  <input id="konum" placeholder="Örn: Kadıköy">
+
+  <label>Açıklama</label>
+  <textarea id="aciklama" placeholder="Kısa not"></textarea>
+
+  <button onclick="kaydet()">Kaydet</button>
+
+  <h2>Kayıtlı İlanlar</h2>
+  <ul id="ilanListesi"></ul>
+
+  <script>
+    function kaydet() {
+      const baslik = document.getElementById("baslik").value;
+      const fiyat = document.getElementById("fiyat").value;
+      const konum = document.getElementById("konum").value;
+      const aciklama = document.getElementById("aciklama").value;
+
+      if (baslik === "" || fiyat === "") {
+        alert("Başlık ve fiyat zorunlu");
+        return;
+      }
+
+      let ilanlar = JSON.parse(localStorage.getItem("ilanlar")) || [];
+
+      ilanlar.push({ baslik, fiyat, konum, aciklama });
+      localStorage.setItem("ilanlar", JSON.stringify(ilanlar));
+
+      listele();
+      temizle();
+    }
+
+    function listele() {
+      const liste = document.getElementById("ilanListesi");
+      liste.innerHTML = "";
+
+      let ilanlar = JSON.parse(localStorage.getItem("ilanlar")) || [];
+
+      ilanlar.forEach(function(ilan) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <strong>${ilan.baslik}</strong><br>
+          Fiyat: ${ilan.fiyat}<br>
+          Konum: ${ilan.konum}<br>
+          Açıklama: ${ilan.aciklama}
+        `;
+        liste.appendChild(li);
+      });
+    }
+
+    function temizle() {
+      document.getElementById("baslik").value = "";
+      document.getElementById("fiyat").value = "";
+      document.getElementById("konum").value = "";
+      document.getElementById("aciklama").value = "";
+    }
+
+    // Sayfa açılınca eski kayıtları yükle
+    listele();
+  </script>
+
+</body>
+</html>
