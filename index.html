@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Emlak İlan Kayıt</title>
+  <title>Emlak İlan Kayıt (Güvenli)</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; }
     label { font-weight: bold; }
@@ -10,32 +10,49 @@
     button { cursor: pointer; }
     li { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; list-style: none; position: relative; }
     li button { position: absolute; top: 5px; right: 5px; width: auto; padding: 2px 6px; font-size: 12px; }
+    #formContainer { display: none; }
+    #logoutBtn { margin-bottom: 20px; }
   </style>
 </head>
 <body>
 
 <h1>Emlak İlan Kayıt Formu</h1>
 
-<label>İlan Başlığı</label>
-<input id="baslik" placeholder="Örn: 3+1 Daire">
+<div id="authContainer">
+  <h3>Giriş Yap / Kayıt Ol</h3>
+  <label>Email</label>
+  <input id="email" type="email" placeholder="Email">
+  <label>Şifre</label>
+  <input id="password" type="password" placeholder="Şifre">
+  <button onclick="register()">Kayıt Ol</button>
+  <button onclick="login()">Giriş Yap</button>
+</div>
 
-<label>Fiyat</label>
-<input id="fiyat" type="number" placeholder="Örn: 12000">
+<div id="formContainer">
+  <button id="logoutBtn" onclick="logout()">Çıkış Yap</button>
 
-<label>Konum</label>
-<input id="konum" placeholder="Örn: Kadıköy">
+  <label>İlan Başlığı</label>
+  <input id="baslik" placeholder="Örn: 3+1 Daire">
 
-<label>Açıklama</label>
-<textarea id="aciklama" placeholder="Kısa not"></textarea>
+  <label>Fiyat</label>
+  <input id="fiyat" type="number" placeholder="Örn: 12000">
 
-<button onclick="kaydet()">Kaydet</button>
+  <label>Konum</label>
+  <input id="konum" placeholder="Örn: Kadıköy">
 
-<h2>Kayıtlı İlanlar</h2>
-<ul id="ilanListesi"></ul>
+  <label>Açıklama</label>
+  <textarea id="aciklama" placeholder="Kısa not"></textarea>
+
+  <button onclick="kaydet()">Kaydet</button>
+
+  <h2>Kayıtlı İlanlar</h2>
+  <ul id="ilanListesi"></ul>
+</div>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
 <script>
   // Firebase config
@@ -52,7 +69,58 @@
   // Firebase initialize
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  window.db = db; // Console test için
+  const auth = firebase.auth();
+  window.db = db;
+
+  const authContainer = document.getElementById("authContainer");
+  const formContainer = document.getElementById("formContainer");
+  const ilanListesi = document.getElementById("ilanListesi");
+
+  // Kullanıcı kayıt
+  function register() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(userCredential => {
+        alert("Kayıt başarılı!");
+        showForm();
+      })
+      .catch(error => alert(error.message));
+  }
+
+  // Kullanıcı giriş
+  function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    auth.signInWithEmailAndPassword(email, password)
+      .then(userCredential => {
+        showForm();
+      })
+      .catch(error => alert(error.message));
+  }
+
+  // Çıkış yap
+  function logout() {
+    auth.signOut().then(() => {
+      formContainer.style.display = "none";
+      authContainer.style.display = "block";
+    });
+  }
+
+  // Formu göster
+  function showForm() {
+    authContainer.style.display = "none";
+    formContainer.style.display = "block";
+  }
+
+  // Oturum kontrol
+  auth.onAuthStateChanged(user => {
+    if (user) showForm();
+    else {
+      formContainer.style.display = "none";
+      authContainer.style.display = "block";
+    }
+  });
 
   // Form kaydetme
   function kaydet() {
@@ -66,9 +134,8 @@
       return;
     }
 
-    const ilan = { baslik, fiyat, konum, aciklama };
+    const ilan = { baslik, fiyat, konum, aciklama, uid: auth.currentUser.uid };
     db.ref("ilanlar").push(ilan);
-
     temizle();
   }
 
@@ -80,29 +147,32 @@
     document.getElementById("aciklama").value = "";
   }
 
-  // Listele ve silme butonları
-  const ilanListesi = document.getElementById("ilanListesi");
-  db.ref("ilanlar").on("value", (snapshot) => {
+  // Listele ve silme
+  db.ref("ilanlar").on("value", snapshot => {
     const data = snapshot.val() || {};
     ilanListesi.innerHTML = "";
 
     Object.keys(data).forEach(id => {
       const ilan = data[id];
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${ilan.baslik}</strong><br>
-        Fiyat: ${ilan.fiyat}<br>
-        Konum: ${ilan.konum}<br>
-        Açıklama: ${ilan.aciklama}
-        <button onclick="sil('${id}')">Sil</button>
-      `;
-      ilanListesi.appendChild(li);
+      // Sadece giriş yapan kullanıcı kendi ilanını görebilir / silebilir
+      if (auth.currentUser && ilan.uid === auth.currentUser.uid) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <strong>${ilan.baslik}</strong><br>
+          Fiyat: ${ilan.fiyat}<br>
+          Konum: ${ilan.konum}<br>
+          Açıklama: ${ilan.aciklama}
+          <button onclick="sil('${id}')">Sil</button>
+        `;
+        ilanListesi.appendChild(li);
+      }
     });
   });
 
   function sil(id) {
     db.ref("ilanlar/" + id).remove();
   }
+
 </script>
 </body>
 </html>
