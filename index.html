@@ -4,101 +4,105 @@
   <meta charset="UTF-8">
   <title>Emlak İlan Kayıt</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 600px;
-    }
-    label {
-      font-weight: bold;
-    }
-    input, textarea, button {
-      width: 100%;
-      margin-top: 5px;
-      margin-bottom: 15px;
-      padding: 8px;
-    }
-    button {
-      cursor: pointer;
-    }
-    li {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
-      list-style: none;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; }
+    label { font-weight: bold; }
+    input, textarea, button { width: 100%; margin-top: 5px; margin-bottom: 15px; padding: 8px; }
+    button { cursor: pointer; }
+    li { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; list-style: none; position: relative; }
+    li button { position: absolute; top: 5px; right: 5px; width: auto; padding: 2px 6px; font-size: 12px; }
   </style>
 </head>
 <body>
 
-  <h1>Emlak İlan Kayıt Formu</h1>
+<h1>Emlak İlan Kayıt Formu</h1>
 
-  <label>İlan Başlığı</label>
-  <input id="baslik" placeholder="Örn: 3+1 Daire">
+<label>İlan Başlığı</label>
+<input id="baslik" placeholder="Örn: 3+1 Daire">
 
-  <label>Fiyat</label>
-  <input id="fiyat" type="number" placeholder="Örn: 12000">
+<label>Fiyat</label>
+<input id="fiyat" type="number" placeholder="Örn: 12000">
 
-  <label>Konum</label>
-  <input id="konum" placeholder="Örn: Kadıköy">
+<label>Konum</label>
+<input id="konum" placeholder="Örn: Kadıköy">
 
-  <label>Açıklama</label>
-  <textarea id="aciklama" placeholder="Kısa not"></textarea>
+<label>Açıklama</label>
+<textarea id="aciklama" placeholder="Kısa not"></textarea>
 
-  <button onclick="kaydet()">Kaydet</button>
+<button onclick="kaydet()">Kaydet</button>
 
-  <h2>Kayıtlı İlanlar</h2>
-  <ul id="ilanListesi"></ul>
+<h2>Kayıtlı İlanlar</h2>
+<ul id="ilanListesi"></ul>
 
-  <script>
-    function kaydet() {
-      const baslik = document.getElementById("baslik").value;
-      const fiyat = document.getElementById("fiyat").value;
-      const konum = document.getElementById("konum").value;
-      const aciklama = document.getElementById("aciklama").value;
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
-      if (baslik === "" || fiyat === "") {
-        alert("Başlık ve fiyat zorunlu");
-        return;
-      }
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDNSEUggubpAilMmgFuHvadMqPWPacseFU",
+    authDomain: "project-1767552968327565740.firebaseapp.com",
+    databaseURL: "https://project-1767552968327565740-default-rtdb.firebaseio.com",
+    projectId: "project-1767552968327565740",
+    storageBucket: "project-1767552968327565740.firebasestorage.app",
+    messagingSenderId: "810149758799",
+    appId: "1:810149758799:web:8336f5c286037b28a3673a"
+  };
 
-      let ilanlar = JSON.parse(localStorage.getItem("ilanlar")) || [];
+  // Firebase initialize
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  window.db = db; // Console test için
 
-      ilanlar.push({ baslik, fiyat, konum, aciklama });
-      localStorage.setItem("ilanlar", JSON.stringify(ilanlar));
+  // Form kaydetme
+  function kaydet() {
+    const baslik = document.getElementById("baslik").value;
+    const fiyat = document.getElementById("fiyat").value;
+    const konum = document.getElementById("konum").value;
+    const aciklama = document.getElementById("aciklama").value;
 
-      listele();
-      temizle();
+    if (baslik === "" || fiyat === "") {
+      alert("Başlık ve fiyat zorunlu");
+      return;
     }
 
-    function listele() {
-      const liste = document.getElementById("ilanListesi");
-      liste.innerHTML = "";
+    const ilan = { baslik, fiyat, konum, aciklama };
+    db.ref("ilanlar").push(ilan);
 
-      let ilanlar = JSON.parse(localStorage.getItem("ilanlar")) || [];
+    temizle();
+  }
 
-      ilanlar.forEach(function(ilan) {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <strong>${ilan.baslik}</strong><br>
-          Fiyat: ${ilan.fiyat}<br>
-          Konum: ${ilan.konum}<br>
-          Açıklama: ${ilan.aciklama}
-        `;
-        liste.appendChild(li);
-      });
-    }
+  // Temizle
+  function temizle() {
+    document.getElementById("baslik").value = "";
+    document.getElementById("fiyat").value = "";
+    document.getElementById("konum").value = "";
+    document.getElementById("aciklama").value = "";
+  }
 
-    function temizle() {
-      document.getElementById("baslik").value = "";
-      document.getElementById("fiyat").value = "";
-      document.getElementById("konum").value = "";
-      document.getElementById("aciklama").value = "";
-    }
+  // Listele ve silme butonları
+  const ilanListesi = document.getElementById("ilanListesi");
+  db.ref("ilanlar").on("value", (snapshot) => {
+    const data = snapshot.val() || {};
+    ilanListesi.innerHTML = "";
 
-    // Sayfa açılınca eski kayıtları yükle
-    listele();
-  </script>
+    Object.keys(data).forEach(id => {
+      const ilan = data[id];
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <strong>${ilan.baslik}</strong><br>
+        Fiyat: ${ilan.fiyat}<br>
+        Konum: ${ilan.konum}<br>
+        Açıklama: ${ilan.aciklama}
+        <button onclick="sil('${id}')">Sil</button>
+      `;
+      ilanListesi.appendChild(li);
+    });
+  });
 
+  function sil(id) {
+    db.ref("ilanlar/" + id).remove();
+  }
+</script>
 </body>
 </html>
